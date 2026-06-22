@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cotizador · Taller Momo</title>
+<style>
+  :root{
+    --paper:#F7F4EE;
+    --paper-2:#FFFFFF;
+    --ink:#211E1A;
+    --ink-soft:#6B6457;
+    --line:#E4DDD0;
+    --line-strong:#CFC6B5;
+    --accent:#3F5E55;       /* verde pizarra, sobrio */
+    --accent-ink:#2E463F;
+    --wood:#C9A66B;          /* solo para detalle de esquinas */
+    --ok:#3F5E55;
+    --warn:#9A5B3B;
+    --field:#FCFAF6;
+    --radius:10px;
+    --mono:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+
+  /* ---- Top bar ---- */
+  header.top{
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    padding:22px 0 14px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1.1}
+  .brand .name{font-family:var(--serif);font-size:24px;letter-spacing:.3px}
+  .brand .sub{font-size:12px;color:var(--ink-soft);letter-spacing:.16em;text-transform:uppercase;margin-top:4px}
+  .tabs{display:flex;gap:4px;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .tab{
+    border:0;background:transparent;font:inherit;font-size:14px;color:var(--ink-soft);
+    padding:7px 16px;border-radius:999px;cursor:pointer;transition:.15s;
+  }
+  .tab[aria-selected="true"]{background:var(--accent);color:#fff}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .hr{height:1px;background:var(--line);border:0;margin:6px 0 26px}
+
+  /* ---- Layout cotizar ---- */
+  .grid{display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+  .panel-title{
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+    margin:0 0 12px;display:flex;align-items:center;gap:10px;
+  }
+  .panel-title::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius)}
+  .card .body{padding:18px}
+
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:5px}
+  .field .hint{font-size:11.5px;color:var(--ink-soft);margin-top:4px;opacity:.85}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--field);
+    border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;
+  }
+  textarea{resize:vertical;min-height:54px}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+  input[type=number]{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:520px){.row3{grid-template-columns:1fr 1fr}}
+
+  .check{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
+
+  /* ---- Resultado: tarjeta "enmarcada" (signature) ---- */
+  .result{position:sticky;top:16px}
+  .frame{
+    position:relative;background:var(--paper-2);
+    border:1px solid var(--line-strong);border-radius:6px;padding:6px;
+  }
+  .frame .mat{
+    border:1px solid var(--line);border-radius:3px;padding:22px 22px 18px;position:relative;
+  }
+  /* esquinas a 45° tipo ensamble de marco */
+  .corner{position:absolute;width:16px;height:16px;border:1.5px solid var(--wood);opacity:.8}
+  .corner.tl{top:-1px;left:-1px;border-right:0;border-bottom:0;border-top-left-radius:4px}
+  .corner.tr{top:-1px;right:-1px;border-left:0;border-bottom:0;border-top-right-radius:4px}
+  .corner.bl{bottom:-1px;left:-1px;border-right:0;border-top:0;border-bottom-left-radius:4px}
+  .corner.br{bottom:-1px;right:-1px;border-left:0;border-top:0;border-bottom-right-radius:4px}
+
+  .price-eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+  .price{font-family:var(--serif);font-size:40px;line-height:1.05;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+  .price small{font-size:15px;color:var(--ink-soft);font-family:var(--sans)}
+  .price-note{font-size:12.5px;color:var(--ink-soft)}
+
+  .breakdown{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+  .ln{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;padding:3px 0}
+  .ln .lbl{color:var(--ink-soft)}
+  .ln .val{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .ln.sub{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px}
+  .ln.tot{border-top:1px solid var(--line-strong);margin-top:6px;padding-top:9px;font-weight:600;font-size:15px}
+  .ln.tot .val{color:var(--accent-ink)}
+  .ln.profit .val{color:var(--accent)}
+  .ln.muted{color:var(--ink-soft);opacity:.85}
+
+  .pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .pill{font-size:11.5px;color:var(--ink-soft);background:var(--field);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+
+  .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  button.btn{font:inherit;font-size:14px;cursor:pointer;border-radius:8px;padding:9px 14px;border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink)}
+  button.btn:hover{border-color:var(--accent);color:var(--accent-ink)}
+  button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.btn.primary:hover{background:var(--accent-ink)}
+  button.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- Materiales ---- */
+  table.cat{width:100%;border-collapse:collapse;font-size:14px}
+  table.cat th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.cat td{padding:5px 8px;border-bottom:1px solid var(--line)}
+  table.cat input{padding:7px 8px;font-size:14px}
+  table.cat input.num{font-family:var(--mono);text-align:right}
+  td.del{width:34px;text-align:center}
+  .iconbtn{border:0;background:transparent;cursor:pointer;color:var(--ink-soft);font-size:16px;line-height:1;padding:4px 6px;border-radius:6px}
+  .iconbtn:hover{color:var(--warn);background:var(--field)}
+  .addrow{margin-top:10px}
+  .col-name{width:30%}
+  .tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tablescroll table.cat{min-width:680px}
+  .compra{margin-top:14px;font-size:12.5px;color:var(--ink-soft);background:var(--field);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:10px 12px;line-height:1.5}
+  .compra b{color:var(--ink);font-weight:600}
+  .compra .cod{font-family:var(--mono)}
+
+  .editor-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .editor-sub{font-size:13px;color:var(--ink-soft);display:flex;align-items:baseline;gap:8px}
+  .editor-sub b{font-family:var(--mono);font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .editor-actions{display:flex;gap:8px}
+  .ed-break{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+  .ed-break .ed-t{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+  .pas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .pas-l{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--ink-soft)}
+  @media(max-width:520px){.pas-grid{grid-template-columns:repeat(2,1fr)}}
+
+  #itemsList{display:flex;flex-direction:column;gap:10px}
+  .item-empty{font-size:13.5px;color:var(--ink-soft);background:var(--field);border:1px dashed var(--line-strong);border-radius:var(--radius);padding:18px;text-align:center}
+  .item-card{display:flex;align-items:flex-start;gap:12px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px}
+  .item-card .ic-main{flex:1;min-width:0}
+  .item-card .ic-title{font-weight:600;font-size:14.5px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .item-card .ic-qty{font-size:11px;color:var(--accent-ink);background:var(--field);border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-weight:600}
+  .item-card .ic-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;line-height:1.45}
+  .item-card .ic-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap}
+  .item-card .ic-price{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+  .item-card .ic-actions{display:flex;gap:2px}
+  .item-card .ic-actions .iconbtn{font-size:13px;padding:3px 7px;border:1px solid var(--line);border-radius:6px}
+  .item-card .ic-actions .iconbtn:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--field)}
+  .ln.ship .val{color:var(--ink)}
+  .q-comments{margin-top:20px;border:1px solid var(--line);border-left:3px solid var(--wood);border-radius:6px;padding:12px 14px;font-size:13px;color:var(--ink);line-height:1.5;background:#fff}
+  .q-comments .qc-t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px}
+
+  #quotesList{display:flex;flex-direction:column;gap:10px}
+  .quote-card{display:flex;align-items:center;gap:14px;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;flex-wrap:wrap}
+  .quote-card .qc-folio{font-family:var(--mono);font-weight:600;color:var(--accent-ink);font-size:13px;min-width:62px}
+  .quote-card .qc-info{flex:1;min-width:160px}
+  .quote-card .qc-name{font-weight:600;font-size:15px}
+  .quote-card .qc-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px}
+  .quote-card .qc-total{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .quote-card .qc-btns{display:flex;gap:6px;flex-wrap:wrap}
+  .quote-empty{font-size:13.5px;color:var(--ink-soft);background:var(--field);border:1px dashed var(--line-strong);border-radius:var(--radius);padding:22px;text-align:center}
+
+  .ped-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .ped-filter .fbtn{font:inherit;font-size:12.5px;cursor:pointer;border:1px solid var(--line-strong);background:var(--paper-2);color:var(--ink-soft);border-radius:999px;padding:5px 13px}
+  .ped-filter .fbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  #pedidosList{display:flex;flex-direction:column;gap:12px}
+  .ped-card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;border-left:4px solid var(--line-strong)}
+  .ped-card.est-pendiente{border-left-color:#9a8d73}
+  .ped-card.est-materiales{border-left-color:var(--wood)}
+  .ped-card.est-proceso{border-left-color:#3f6f93}
+  .ped-card.est-listo{border-left-color:var(--accent)}
+  .ped-card.est-entregado{border-left-color:#b8b0a0;opacity:.78}
+  .ped-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .ped-folio{font-family:var(--mono);font-weight:600;color:var(--accent-ink);font-size:13px}
+  .ped-name{font-weight:600;font-size:15.5px}
+  .ped-sub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .ped-total{font-family:var(--mono);font-weight:600;white-space:nowrap}
+  .ped-badge{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--field);border:1px solid var(--line);color:var(--ink-soft);white-space:nowrap}
+  .ped-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:12px}
+  @media(max-width:520px){.ped-grid{grid-template-columns:1fr}}
+  .ped-grid label{display:block;font-size:11px;color:var(--ink-soft);margin-bottom:3px}
+  .ped-grid select, .ped-grid input, .ped-card textarea{width:100%;font:inherit;font-size:13.5px;background:var(--field);border:1px solid var(--line-strong);border-radius:7px;padding:7px 9px;color:var(--ink)}
+  .ped-card textarea{margin-top:10px;min-height:42px;resize:vertical}
+  .ped-foot{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+  .params-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.params-grid{grid-template-columns:1fr}}
+  .params-grid .field{margin-bottom:0}
+  .stack{display:flex;flex-direction:column;gap:22px}
+
+  .saved{font-size:12px;color:var(--ink-soft)}
+  .saved b{color:var(--ok)}
+
+  .note{font-size:12.5px;color:var(--ink-soft);background:var(--field);border:1px solid var(--line);border-left:3px solid var(--wood);border-radius:6px;padding:10px 12px}
+
+  /* ---- Cotización del cliente: overlay + hoja (formato planilla) ---- */
+  #previewOverlay{
+    position:fixed;inset:0;z-index:50;display:none;
+    background:rgba(33,30,26,.55);backdrop-filter:blur(2px);
+    overflow:auto;padding:28px 16px 60px;
+  }
+  #previewOverlay.open{display:block}
+  .pv-toolbar{max-width:940px;margin:0 auto 14px;display:flex;justify-content:flex-end;gap:8px}
+  .pv-toolbar .btn{background:var(--paper-2)}
+  .pv-toolbar .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .sheet{
+    max-width:940px;margin:0 auto;background:#fff;color:var(--ink);
+    border:1px solid var(--line-strong);border-radius:4px;
+    box-shadow:0 24px 60px -24px rgba(33,30,26,.5);position:relative;
+    print-color-adjust:exact;-webkit-print-color-adjust:exact;
+  }
+  .sheet .sheet-inner{padding:30px 34px 30px}
+
+  .qs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:16px}
+  .qs-title{font-family:var(--serif);font-size:25px;letter-spacing:.02em}
+  .qs-contact{font-size:12px;color:var(--ink);line-height:1.65;margin-top:8px}
+  .qs-logo-wrap{flex-shrink:0}
+  .qs-logo{max-height:92px;max-width:230px;object-fit:contain;display:block}
+
+  .qs-table{width:100%;border-collapse:collapse}
+  .qs-client td{border:1px solid var(--line-strong);padding:6px 9px;font-size:12.5px;vertical-align:middle}
+  .qs-client td.lbl{background:#f3f1ec;font-size:10.5px;letter-spacing:.03em;color:var(--ink-soft);font-weight:600;white-space:nowrap}
+  .qs-tamano{text-align:center;font-style:italic;font-size:11px;color:var(--ink-soft);margin:9px 0 3px}
+
+  .qs-scroll{overflow-x:auto}
+  .qs-items{width:100%;border-collapse:collapse;min-width:760px}
+  .qs-items th{background:#f3f1ec;border:1px solid var(--line-strong);padding:7px 6px;font-size:9.5px;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;text-align:center}
+  .qs-items td{border:1px solid var(--line-strong);padding:8px 7px;font-size:12px;vertical-align:middle}
+  .qs-items td.c{text-align:center;width:30px}
+  .qs-items td.num{text-align:center;font-variant-numeric:tabular-nums;width:50px}
+  .qs-items td.money{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap;width:96px}
+  .qs-items td.desc b{font-weight:600}
+  .qs-items td.det{font-style:italic;color:var(--ink-soft);font-size:11px}
+  .qs-items td.center{text-align:center;color:var(--ink-soft)}
+  .qs-items tr.ship td{background:#fbfaf7}
+
+  .qs-tot{width:100%;border-collapse:collapse;margin-top:-1px}
+  .qs-tot td{padding:7px 10px;border:1px solid var(--line-strong)}
+  .qs-tot td.lbl{text-align:right;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:10.5px;color:var(--ink-soft)}
+  .qs-tot td.money{text-align:right;font-family:var(--mono);font-weight:600;width:150px;white-space:nowrap;font-size:13px}
+  .qs-tot tr.grand td{background:#f3f1ec}
+  .qs-tot tr.grand td.money{font-size:14px}
+
+  .qs-notes{border:1px solid var(--line-strong);margin-top:14px;min-height:60px;padding:9px 11px;font-size:12px;line-height:1.5}
+  .qs-notes-t{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-bottom:5px}
+  .qs-confirm{margin-top:20px;text-align:right;font-style:italic;font-size:12px;color:var(--ink-soft)}
+
+  @media(max-width:620px){
+    .sheet .sheet-inner{padding:22px 18px}
+    .qs-head{flex-direction:column-reverse;gap:12px}
+    .qs-logo{max-height:72px}
+  }
+
+  @media print{
+    body{background:#fff}
+    body * {visibility:hidden}
+    #previewOverlay, #previewOverlay *{visibility:visible}
+    #previewOverlay{position:static;inset:auto;display:block;background:none;backdrop-filter:none;padding:0;overflow:visible}
+    .pv-toolbar{display:none}
+    .sheet{box-shadow:none;border:none;max-width:none;margin:0}
+    .sheet .sheet-inner{padding:0}
+    .qs-scroll{overflow:visible}
+    .qs-items{min-width:0}
+    @page{size:A4 landscape;margin:11mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <span class="name" id="brandName">Taller Momo</span>
+      <span class="sub">Cotizador de enmarcaciones</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" id="tab-cotizar">Cotizar</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab-cotizaciones">Cotizaciones</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab-pedidos">Pedidos</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab-materiales">Materiales y ajustes</button>
+    </div>
+  </header>
+  <hr class="hr" />
+
+  <!-- ============ VISTA COTIZAR ============ -->
+  <section id="view-cotizar">
+    <div class="grid">
+
+      <!-- Formulario -->
+      <div>
+        <p class="panel-title">Datos del pedido</p>
+        <div class="card"><div class="body">
+          <div class="row2">
+            <div class="field">
+              <label for="cliente">Cliente <span style="opacity:.6">(nombre)</span></label>
+              <input type="text" id="cliente" placeholder="Nombre y apellido" />
+            </div>
+            <div class="field">
+              <label for="rut">RUT</label>
+              <input type="text" id="rut" placeholder="12.345.678-9" />
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="email">Email</label>
+              <input type="text" id="email" placeholder="correo@ejemplo.cl" />
+            </div>
+            <div class="field">
+              <label for="telefono">Teléfono</label>
+              <input type="text" id="telefono" placeholder="+56 9 ..." />
+            </div>
+          </div>
+          <div class="field">
+            <label for="direccion">Dirección <span style="opacity:.6">(para despacho)</span></label>
+            <input type="text" id="direccion" placeholder="Calle, número, comuna, ciudad" />
+          </div>
+          <div class="field">
+            <label for="selDespacho">Despacho</label>
+            <select id="selDespacho"></select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="comentarios">Comentarios del pedido <span style="opacity:.6">(opcional)</span></label>
+            <textarea id="comentarios" placeholder="Indicaciones, plazos o detalles especiales…"></textarea>
+          </div>
+        </div></div>
+
+        <p class="panel-title" style="margin-top:24px">Cuadro <span id="editorMode" style="text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600"></span></p>
+        <div class="card"><div class="body">
+
+          <div class="field">
+            <label for="selTipo">Tipo de trabajo</label>
+            <select id="selTipo">
+              <option value="marco">Cuadro enmarcado</option>
+              <option value="impresion">Solo impresión de lámina</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="descripcion">Descripción del cuadro <span style="opacity:.6">(opcional)</span></label>
+            <input type="text" id="descripcion" placeholder="Ej: acuarela paisaje" />
+          </div>
+
+          <div class="row3">
+            <div class="field">
+              <label for="ancho">Ancho lámina (cm)</label>
+              <input type="number" id="ancho" min="0" step="0.1" value="30" />
+            </div>
+            <div class="field">
+              <label for="alto">Alto lámina (cm)</label>
+              <input type="number" id="alto" min="0" step="0.1" value="40" />
+            </div>
+            <div class="field">
+              <label for="cantidad">Cantidad</label>
+              <input type="number" id="cantidad" min="1" step="1" value="1" />
+            </div>
+          </div>
+          <p class="hint" id="tamFinalHint" style="margin-top:-6px;margin-bottom:16px">
+            Ingresa el tamaño de la lámina/imagen. El tamaño final del cuadro se calcula solo (paspartú + marco).
+          </p>
+
+          <div class="field">
+            <label for="selLamina">Lámina / impresión</label>
+            <select id="selLamina"></select>
+          </div>
+
+          <div id="marcoFields">
+            <div class="field">
+              <label for="selMoldura">Moldura</label>
+              <select id="selMoldura"></select>
+            </div>
+
+            <div class="row2">
+              <div class="field">
+                <label for="selVidrio">Vidrio</label>
+                <select id="selVidrio"></select>
+              </div>
+              <div class="field">
+                <label for="selPaspartu">Paspartú / fondo</label>
+                <select id="selPaspartu"></select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Ancho del paspartú / fondo por lado (cm)</label>
+              <div class="pas-grid">
+                <label class="pas-l">Arriba<input type="number" id="pasArr" min="0" step="0.5" value="0" /></label>
+                <label class="pas-l">Abajo<input type="number" id="pasAb" min="0" step="0.5" value="0" /></label>
+                <label class="pas-l">Izquierda<input type="number" id="pasIzq" min="0" step="0.5" value="0" /></label>
+                <label class="pas-l">Derecha<input type="number" id="pasDer" min="0" step="0.5" value="0" /></label>
+              </div>
+              <p class="hint">Puede variar por lado (ej. inferior más ancho). 0 = sin borde.</p>
+            </div>
+
+            <label class="check" style="margin:2px 0 6px">
+              <input type="checkbox" id="chkMdf" checked /> Lleva respaldo de MDF 3 mm
+            </label>
+          </div>
+
+          <p class="panel-title" style="margin-top:8px">Ajustes de este cuadro</p>
+          <div class="row3">
+            <div class="field">
+              <label for="manoObra">Mano de obra ($)</label>
+              <input type="number" id="manoObra" min="0" step="100" />
+              <p class="hint">Tu tiempo de armado.</p>
+            </div>
+            <div class="field">
+              <label for="envio">Envío prorrateado ($)</label>
+              <input type="number" id="envio" min="0" step="100" />
+              <p class="hint">Parte del flete de materiales.</p>
+            </div>
+            <div class="field">
+              <label for="insumos">Insumos varios ($)</label>
+              <input type="number" id="insumos" min="0" step="100" />
+              <p class="hint">Herrajes, cordel, cinta.</p>
+            </div>
+          </div>
+
+          <div class="compra" id="compra"></div>
+
+          <div id="editorBreakdown" class="ed-break"></div>
+
+          <div class="editor-foot">
+            <div class="editor-sub">Subtotal de este cuadro<b id="editorSub">$0</b></div>
+            <div class="editor-actions">
+              <button class="btn" id="btnCancelEdit" style="display:none">Cancelar</button>
+              <button class="btn primary" id="btnAddItem">Agregar al pedido</button>
+            </div>
+          </div>
+
+        </div></div>
+
+        <p class="panel-title" style="margin-top:24px">Cuadros del pedido <span id="itemCount" style="text-transform:none;letter-spacing:0;color:var(--ink-soft)"></span></p>
+        <div id="itemsList"></div>
+      </div>
+
+      <!-- Resultado -->
+      <div class="result">
+        <p class="panel-title">Pedido <span id="quoteIndicator" style="text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600"></span></p>
+        <div class="frame">
+          <span class="corner tl"></span><span class="corner tr"></span>
+          <span class="corner bl"></span><span class="corner br"></span>
+          <div class="mat">
+            <div class="price-eyebrow">Total del pedido</div>
+            <div class="price" id="precioFinal">$0</div>
+            <div class="price-note" id="precioNota">IVA incluido</div>
+
+            <div class="breakdown" id="breakdown"></div>
+
+            <div class="pills" id="pills"></div>
+
+            <div class="actions">
+              <button class="btn primary" id="btnSave">Guardar cotización</button>
+              <button class="btn" id="btnPrint">Ver / PDF</button>
+              <button class="btn" id="btnLimpiar">Nuevo</button>
+            </div>
+            <p class="saved" id="quoteSaved" style="margin-top:8px"></p>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:12px">
+          “Guardar” deja la cotización en la pestaña <b>Cotizaciones</b> para revisarla o editarla después. El desglose es solo para ti.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ VISTA COTIZACIONES ============ -->
+  <section id="view-cotizaciones" style="display:none">
+    <p class="panel-title">Cotizaciones guardadas <span id="quotesCount" style="text-transform:none;letter-spacing:0;color:var(--ink-soft)"></span></p>
+    <div id="quotesList"></div>
+  </section>
+
+  <!-- ============ VISTA PEDIDOS ============ -->
+  <section id="view-pedidos" style="display:none">
+    <p class="panel-title">Pedidos en taller <span id="pedidosCount" style="text-transform:none;letter-spacing:0;color:var(--ink-soft)"></span></p>
+    <div id="pedidosFilter" class="ped-filter"></div>
+    <div id="pedidosList"></div>
+  </section>
+
+  <!-- ============ VISTA MATERIALES ============ -->
+  <section id="view-materiales" style="display:none">
+    <div class="stack">
+
+      <div>
+        <p class="panel-title">Molduras <span style="text-transform:none;letter-spacing:0;opacity:.7">— precio por listón</span></p>
+        <div class="card"><div class="body">
+          <div class="tablescroll">
+          <table class="cat" id="tblMolduras">
+            <thead><tr>
+              <th class="col-name">Nombre</th>
+              <th>Código</th>
+              <th>Proveedor</th>
+              <th>Precio listón ($)</th>
+              <th>Largo listón (m)</th>
+              <th>Perfil an×prof (mm)</th>
+              <th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+          </div>
+          <button class="btn addrow" data-add="molduras">+ Agregar moldura</button>
+          <p class="note" style="margin-top:12px">El perfil es <b>ancho × profundidad</b> en mm (ej. 20x20). El primer número (ancho del marco) se usa para calcular el material de las esquinas a 45° <b>y el tamaño final del cuadro</b>. La profundidad queda como especificación para el taller.</p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Vidrios <span style="text-transform:none;letter-spacing:0;opacity:.7">— precio por m²</span></p>
+        <div class="card"><div class="body">
+          <table class="cat" id="tblVidrios">
+            <thead><tr><th class="col-name">Nombre</th><th>Precio por m² ($)</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <button class="btn addrow" data-add="vidrios">+ Agregar vidrio</button>
+          <p class="note" style="margin-top:12px">¿Lo compras por plancha? Precio por m² = precio de la plancha ÷ (ancho m × alto m). Ej: $18.000 ÷ (2,1 × 1,6) ≈ $5.357/m².</p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Paspartú y fondos <span style="text-transform:none;letter-spacing:0;opacity:.7">— precio por m²</span></p>
+        <div class="card"><div class="body">
+          <table class="cat" id="tblPaspartus">
+            <thead><tr><th class="col-name">Nombre</th><th>Precio por m² ($)</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <button class="btn addrow" data-add="paspartus">+ Agregar paspartú / fondo</button>
+          <p class="hint" style="margin-top:8px">Deja la opción “Sin paspartú” en $0 para cuadros que no llevan.</p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Láminas e impresiones <span style="text-transform:none;letter-spacing:0;opacity:.7">— precio por m²</span></p>
+        <div class="card"><div class="body">
+          <table class="cat" id="tblLaminas">
+            <thead><tr><th class="col-name">Nombre</th><th>Precio por m² ($)</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <button class="btn addrow" data-add="laminas">+ Agregar lámina</button>
+          <p class="hint" style="margin-top:8px">Usa “La entrega el cliente” en $0 cuando la imagen la trae el cliente.</p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Despacho <span style="text-transform:none;letter-spacing:0;opacity:.7">— se agrega al total del pedido</span></p>
+        <div class="card"><div class="body">
+          <table class="cat" id="tblDespachos">
+            <thead><tr><th class="col-name">Nombre</th><th>Valor ($)</th><th title="Si se marca, el cliente lo paga al transportista y no se suma al total">Por pagar</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <button class="btn addrow" data-add="despachos">+ Agregar opción de despacho</button>
+          <p class="hint" style="margin-top:8px">“Por pagar” = lo paga el cliente contra entrega; se muestra en la cotización pero <b>no</b> se suma al total.</p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">MDF 3 mm <span style="text-transform:none;letter-spacing:0;opacity:.7">— se compra por plancha</span></p>
+        <div class="card"><div class="body">
+          <div class="row3">
+            <div class="field"><label for="mdfPrecio">Precio plancha ($)</label><input type="number" id="mdfPrecio" min="0" step="100" /></div>
+            <div class="field"><label for="mdfAncho">Ancho plancha (m)</label><input type="number" id="mdfAncho" min="0" step="0.01" /></div>
+            <div class="field"><label for="mdfAlto">Alto plancha (m)</label><input type="number" id="mdfAlto" min="0" step="0.01" /></div>
+          </div>
+          <p class="hint" id="mdfDerivado"></p>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Parámetros del negocio</p>
+        <div class="card"><div class="body">
+          <div class="params-grid">
+            <div class="field">
+              <label for="pMerma">Merma de moldura (%)</label>
+              <input type="number" id="pMerma" min="0" step="1" />
+              <p class="hint">Desperdicio extra al cortar. Sugerido 10%.</p>
+            </div>
+            <div class="field">
+              <label for="pMarkup">Factor de venta (×)</label>
+              <input type="number" id="pMarkup" min="1" step="0.1" />
+              <p class="hint" id="markupHint">Multiplicas el costo total por este número.</p>
+            </div>
+            <div class="field">
+              <label for="pManoObra">Mano de obra por defecto ($)</label>
+              <input type="number" id="pManoObra" min="0" step="100" />
+            </div>
+            <div class="field">
+              <label for="pEnvio">Envío por defecto ($)</label>
+              <input type="number" id="pEnvio" min="0" step="100" />
+            </div>
+            <div class="field">
+              <label for="pInsumos">Insumos varios por defecto ($)</label>
+              <input type="number" id="pInsumos" min="0" step="100" />
+            </div>
+            <div class="field">
+              <label for="pRedondeo">Redondear precio a múltiplo de ($)</label>
+              <input type="number" id="pRedondeo" min="0" step="100" />
+            </div>
+            <div class="field">
+              <label for="pFolio">Próximo N° de cotización</label>
+              <input type="number" id="pFolio" min="1" step="1" />
+              <p class="hint">El folio que se asignará a la próxima cotización que guardes.</p>
+            </div>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="pIvaActivo" /> Agregar IVA al precio final</label>
+              <div style="margin-top:8px"><input type="number" id="pIvaTasa" min="0" step="0.5" /></div>
+              <p class="hint">Tasa de IVA en %. En Chile, 19%.</p>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div>
+        <p class="panel-title">Datos del taller, logo y respaldo</p>
+        <div class="card"><div class="body">
+          <div class="field"><label for="marcaNombre">Nombre del taller</label><input type="text" id="marcaNombre" /></div>
+          <div class="field"><label for="marcaContacto">Contacto (aparece bajo el título de la cotización)</label><textarea id="marcaContacto" placeholder="Email: contacto@...&#10;Despachamos a todo Chile.&#10;WhatsApp y llamadas +56 9 ..."></textarea></div>
+          <div class="field">
+            <label>Logo de la cotización</label>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <img id="logoPreview" alt="logo" style="max-height:64px;max-width:170px;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#fff;padding:5px" />
+              <button class="btn" id="btnLogo">Cambiar logo…</button>
+              <button class="btn" id="btnLogoDefault">Usar el de Tienda Bianco</button>
+              <input type="file" id="fileLogo" accept="image/png,image/jpeg,image/webp" style="display:none" />
+            </div>
+            <p class="hint">PNG o JPG. Se guarda con la app y aparece arriba a la derecha en la cotización.</p>
+          </div>
+          <div class="note">
+            Guarda un respaldo de tu catálogo y cotizaciones cada cierto tiempo. Si abres esto en otro equipo o navegador, lo importas y recuperas todo.
+          </div>
+          <div class="actions" style="margin-top:12px">
+            <button class="btn" id="btnExport">Exportar respaldo (.json)</button>
+            <button class="btn" id="btnImport">Importar respaldo</button>
+            <input type="file" id="fileImport" accept="application/json" style="display:none" />
+            <span class="saved" id="savedMsg"></span>
+          </div>
+        </div></div>
+
+        <p class="panel-title" style="margin-top:18px">Sincronizar con GitHub <span style="text-transform:none;letter-spacing:0;color:var(--ink-soft);font-weight:400">(opcional)</span></p>
+        <div class="card"><div class="body">
+          <p class="note" style="margin-top:0">
+            Guarda y trae todos tus datos (catálogo, cotizaciones y pedidos) desde un archivo en tu repositorio de GitHub, para abrir la app desde otro equipo o celular. Es manual: <b>Guardar</b> sube y <b>Cargar</b> baja.
+          </p>
+          <div class="row2">
+            <div class="field"><label for="ghOwner">Usuario de GitHub</label><input type="text" id="ghOwner" placeholder="tu-usuario" autocomplete="off" /></div>
+            <div class="field"><label for="ghRepo">Repositorio</label><input type="text" id="ghRepo" placeholder="taller-bianco" autocomplete="off" /></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="ghPath">Archivo</label><input type="text" id="ghPath" placeholder="datos-bianco.json" autocomplete="off" /></div>
+            <div class="field"><label for="ghBranch">Rama</label><input type="text" id="ghBranch" placeholder="main" autocomplete="off" /></div>
+          </div>
+          <div class="field">
+            <label for="ghToken">Token de acceso (se guarda solo en este navegador)</label>
+            <input type="password" id="ghToken" placeholder="github_pat_..." autocomplete="off" />
+          </div>
+          <div class="actions" style="margin-top:4px">
+            <button class="btn primary" id="btnGhPush">Guardar en GitHub ↑</button>
+            <button class="btn" id="btnGhPull">Cargar desde GitHub ↓</button>
+            <button class="btn" id="btnGhTest">Probar conexión</button>
+            <span class="saved" id="ghMsg"></span>
+          </div>
+          <div class="note" style="margin-top:12px;border-color:var(--wood)">
+            <b>Importante (seguridad):</b> usa un repositorio <b>privado</b>. Crea un token <b>fine-grained</b> limitado solo a ese repo, con permiso <b>Contents: Read and write</b>. El token queda guardado únicamente en este navegador y <b>no</b> se sube al archivo. Si usas un equipo compartido, ciérralo con “Olvidar token”. <button class="btn" id="btnGhForget" style="margin-left:8px">Olvidar token</button>
+          </div>
+        </div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Cotización del cliente (vista previa + impresión) -->
+  <div id="previewOverlay" role="dialog" aria-modal="true" aria-label="Vista previa de cotización">
+    <div class="pv-toolbar">
+      <button class="btn" id="btnClosePreview">Cerrar</button>
+      <button class="btn primary" id="btnDoPrint">Imprimir / Guardar PDF</button>
+    </div>
+    <div id="quoteSheet" class="sheet"></div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+/* Logo por defecto (Tienda Bianco). La usuaria puede subir el suyo en Ajustes. */
+const LOGO_DEFAULT="data:image/png;base64,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";
+function logoSrc(){ return (typeof state!=="undefined" && state.marca && state.marca.logo) ? state.marca.logo : LOGO_DEFAULT; }
+
+/* ---------------- Almacenamiento persistente ----------------
+   Orden: window.storage (dentro de la app de Claude) → localStorage
+   (archivo descargado: guarda solo en ese navegador) → memoria.
+   Todo va envuelto en try/catch para no fallar en ningún entorno. */
+const KEY = "tallermomo:cotizador:v1";
+function hasLocalStorage(){
+  try{ return typeof localStorage!=="undefined" && localStorage!==null; }catch(e){ return false; }
+}
+const Store = {
+  async load(){
+    try{
+      if(window.storage && window.storage.get){
+        const r = await window.storage.get(KEY);
+        if(r && r.value) return JSON.parse(r.value);
+      }
+    }catch(e){}
+    try{
+      if(hasLocalStorage()){
+        const v = localStorage.getItem(KEY);
+        if(v) return JSON.parse(v);
+      }
+    }catch(e){}
+    return null;
+  },
+  async save(obj){
+    const json = JSON.stringify(obj);
+    let ok=false;
+    try{
+      if(window.storage && window.storage.set){ await window.storage.set(KEY, json); ok=true; }
+    }catch(e){}
+    try{
+      if(hasLocalStorage()){ localStorage.setItem(KEY, json); ok=true; }
+    }catch(e){}
+    return ok;
+  }
+};
+
+/* ---------------- Estado por defecto (editable) ---------------- */
+function uid(){ return Math.random().toString(36).slice(2,8); }
+function defaults(){
+  return {
+    molduras:[
+      {id:uid(), nombre:"Natural angosta", codigo:"", proveedor:"", precioListon:7000, largoListon:3.0, perfil:"20x20"},
+      {id:uid(), nombre:"Negra mate", codigo:"", proveedor:"", precioListon:11000, largoListon:3.0, perfil:"30x30"},
+      {id:uid(), nombre:"Dorada clásica", codigo:"", proveedor:"", precioListon:18000, largoListon:3.2, perfil:"40x45"}
+    ],
+    vidrios:[
+      {id:uid(), nombre:"Común 2 mm", precioM2:9000},
+      {id:uid(), nombre:"Antirreflejo", precioM2:24000},
+      {id:uid(), nombre:"Sin vidrio", precioM2:0}
+    ],
+    paspartus:[
+      {id:uid(), nombre:"Sin paspartú", precioM2:0},
+      {id:uid(), nombre:"Paspartú blanco", precioM2:8000},
+      {id:uid(), nombre:"Fondo de tela", precioM2:16000}
+    ],
+    laminas:[
+      {id:uid(), nombre:"La entrega el cliente", precioM2:0},
+      {id:uid(), nombre:"Impresión fotográfica", precioM2:20000},
+      {id:uid(), nombre:"Impresión fine art / acuarela", precioM2:35000}
+    ],
+    mdf:{precioPlancha:12000, anchoPlancha:2.44, altoPlancha:1.22},
+    despachos:[
+      {id:uid(), nombre:"Retiro en taller", precio:0, porPagar:false},
+      {id:uid(), nombre:"Despacho Talca", precio:5000, porPagar:false},
+      {id:uid(), nombre:"Despacho a regiones (por pagar)", precio:4000, porPagar:true}
+    ],
+    params:{merma:10, markup:2.0, manoObra:8000, envio:2000, insumos:1500, redondeo:500, ivaActivo:true, ivaTasa:19, folio:1},
+    cotizaciones:[],
+    pedidos:[],
+    sync:{owner:"", repo:"", path:"datos-bianco.json", branch:"main"},
+    marca:{nombre:"Tienda Bianco", contacto:"Email: contacto@estudiobianco.cl\nDespachamos a todo Chile.\nWhatsApp y llamadas +56 9 8501 4060", logo:""}
+  };
+}
+
+let state = defaults();
+
+/* ---------------- Utilidades ---------------- */
+const $ = (id)=>document.getElementById(id);
+const fmt = (n)=> "$" + Math.round(n||0).toLocaleString("es-CL");
+function num(v){ const n = parseFloat(v); return isNaN(n)?0:n; }
+
+let saveTimer=null;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const ok = await Store.save(state);
+    const el=$("savedMsg");
+    if(el) el.innerHTML = ok ? "Guardado <b>✓</b>" : "En memoria (recuerda exportar)";
+    setTimeout(()=>{ if(el) el.textContent=""; }, 2500);
+  }, 250);
+}
+
+/* ---------------- Pedido (varios cuadros) ---------------- */
+let order = { items: [] };
+let editingId = null;
+let currentQuoteId = null;
+
+function despachoSel(){ return state.despachos.find(d=>d.id===$("selDespacho").value) || state.despachos[0] || null; }
+
+/* Cálculo de un cuadro a partir de un objeto item.
+   it.ancho/it.alto = tamaño de la LÁMINA. El tamaño final se deriva del
+   borde de paspartú (it.paspartuAncho) y del ancho del marco (perfil). */
+function calcItem(it){
+  const tipo = it.tipo==="impresion" ? "impresion" : "marco";
+  const esMarco = tipo==="marco";
+  const A=num(it.ancho), H=num(it.alto), qty=Math.max(1,num(it.cantidad)||1);
+  const m=state.molduras.find(x=>x.id===it.molduraId);
+  const v=state.vidrios.find(x=>x.id===it.vidrioId);
+  const p=state.paspartus.find(x=>x.id===it.paspartuId);
+  const l=state.laminas.find(x=>x.id===it.laminaId);
+  const mdfOn= esMarco && !!it.mdfOn;
+
+  // ancho de cara del marco (cm) desde el perfil "an x prof" en mm
+  let marcoCm=0;
+  if(esMarco && m){
+    marcoCm = num(m.ancho);
+    if(m.perfil){ const mm=String(m.perfil).match(/(\d+(?:[.,]\d+)?)/); if(mm) marcoCm=parseFloat(mm[1].replace(",","."))/10; }
+  }
+  // bordes de paspartú por lado (cm), con respaldo al valor único antiguo
+  const fb = num(it.paspartuAncho)||0;
+  const pArr = esMarco ? (it.pasArr!==undefined?num(it.pasArr):fb) : 0;
+  const pAb  = esMarco ? (it.pasAb !==undefined?num(it.pasAb ):fb) : 0;
+  const pIzq = esMarco ? (it.pasIzq!==undefined?num(it.pasIzq):fb) : 0;
+  const pDer = esMarco ? (it.pasDer!==undefined?num(it.pasDer):fb) : 0;
+
+  // tamaños derivados
+  const matW = A + pIzq + pDer;         // vidrio / MDF / paspartú se cortan a este tamaño
+  const matH = H + pArr + pAb;
+  const finalW = esMarco ? (matW + 2*marcoCm) : A;  // tamaño final del cuadro
+  const finalH = esMarco ? (matH + 2*marcoCm) : H;
+
+  const areaLamina = (A*H)/10000;       // la lámina se imprime a su tamaño
+  const areaMat = (matW*matH)/10000;    // vidrio / MDF / paspartú
+
+  let molCost=0, metrosLineales=0;
+  if(esMarco && m){
+    metrosLineales = (2*(matW+matH) + 8*marcoCm)/100;  // perímetro del cuadro + esquinas
+    const precioMetro = num(m.largoListon)>0 ? num(m.precioListon)/num(m.largoListon) : 0;
+    molCost = metrosLineales*precioMetro*(1+num(state.params.merma)/100);
+  }
+  const vidCost = (esMarco && v) ? areaMat*num(v.precioM2) : 0;
+  const pasCost = (esMarco && p) ? areaMat*num(p.precioM2) : 0;
+  const lamCost = l ? areaLamina*num(l.precioM2) : 0;
+  let mdfCost=0;
+  if(mdfOn){ const aP=num(state.mdf.anchoPlancha),bP=num(state.mdf.altoPlancha),areaP=aP*bP; mdfCost=areaP>0?areaMat*(num(state.mdf.precioPlancha)/areaP):0; }
+
+  const manoObra=num(it.manoObra), envio=num(it.envio), insumos=num(it.insumos);
+  const materiales=molCost+vidCost+pasCost+lamCost+mdfCost;
+  const costoTotal=materiales+manoObra+envio+insumos;
+  const markup=Math.max(1,num(state.params.markup)||1);
+  const ventaNeto=costoTotal*markup;
+  const ganancia=ventaNeto-costoTotal;
+  const ivaTasa=state.params.ivaActivo?num(state.params.ivaTasa)/100:0;
+  const iva=ventaNeto*ivaTasa;
+  let precioUnit=ventaNeto+iva;
+  const red=num(state.params.redondeo);
+  if(red>0) precioUnit=Math.ceil(precioUnit/red)*red;
+  const totalItem=precioUnit*qty;
+  return {tipo,esMarco,A,H,qty,pArr,pAb,pIzq,pDer,marcoCm,matW,matH,finalW,finalH,areaLamina,areaMat,metrosLineales,
+    molCost,vidCost,pasCost,lamCost,mdfCost,materiales,
+    manoObra,envio,insumos,costoTotal,markup,ventaNeto,ganancia,iva,ivaTasa,precioUnit,totalItem,
+    sel:{m,v,p,l,mdfOn}};
+}
+
+/* Lee el editor y devuelve un objeto cuadro */
+function readEditor(){
+  return {
+    id: editingId || uid(),
+    tipo: $("selTipo").value,
+    descripcion: $("descripcion").value.trim(),
+    ancho: num($("ancho").value), alto: num($("alto").value), cantidad: Math.max(1,num($("cantidad").value)||1),
+    molduraId: $("selMoldura").value, vidrioId: $("selVidrio").value, paspartuId: $("selPaspartu").value, laminaId: $("selLamina").value,
+    paspartuAncho: num($("pasArr").value), pasArr: num($("pasArr").value), pasAb: num($("pasAb").value), pasIzq: num($("pasIzq").value), pasDer: num($("pasDer").value),
+    mdfOn: $("chkMdf").checked,
+    manoObra: num($("manoObra").value), envio: num($("envio").value), insumos: num($("insumos").value)
+  };
+}
+
+/* Formatea una dimensión en cm (sin decimales si es entero) */
+function dimTxt(x){ return (Math.round(x*10)/10).toString().replace(".",","); }
+
+/* Desglose interno del costo de un cuadro */
+function costBreakdownHTML(r, it){
+  const L=(lbl,val,cls="")=>`<div class="ln ${cls}"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+  let h="";
+  if(!it || it.tipo!=="impresion"){
+    h+=L("Moldura"+(r.sel.m?` · ${r.metrosLineales.toFixed(2).replace(".",",")} m`:""), fmt(r.molCost));
+    if(r.vidCost>0) h+=L("Vidrio", fmt(r.vidCost));
+    if(r.sel.mdfOn) h+=L("MDF 3 mm", fmt(r.mdfCost));
+    if(r.pasCost>0) h+=L("Paspartú / fondo", fmt(r.pasCost));
+  }
+  if(r.lamCost>0) h+=L("Lámina / impresión", fmt(r.lamCost));
+  if(r.manoObra>0) h+=L("Mano de obra", fmt(r.manoObra));
+  if(r.envio>0) h+=L("Envío", fmt(r.envio));
+  if(r.insumos>0) h+=L("Insumos varios", fmt(r.insumos));
+  h+=L("Costo total", fmt(r.costoTotal), "sub");
+  h+=L(`Venta neta (×${r.markup})`, fmt(r.ventaNeto));
+  h+=L("Tu ganancia", fmt(r.ganancia), "profit");
+  if(r.ivaTasa>0) h+=L(`IVA (${(r.ivaTasa*100).toFixed(0)}%)`, fmt(r.iva), "muted");
+  h+=L("Precio unitario", fmt(r.precioUnit), "tot");
+  if(r.qty>1) h+=L(`Total ${r.qty} unidades`, fmt(r.totalItem), "tot");
+  return h;
+}
+
+/* Subtotal en vivo del cuadro en edición + nota para el taller */
+function renderEditor(){
+  const it=readEditor();
+  const esImpresion = it.tipo==="impresion";
+  $("marcoFields").style.display = esImpresion ? "none" : "";
+  const r=calcItem(it);
+  $("editorSub").textContent = fmt(r.totalItem);
+  // Tamaño final
+  if(esImpresion){
+    $("tamFinalHint").innerHTML = `Impresión de <b>${dimTxt(r.A)} × ${dimTxt(r.H)} cm</b>.`;
+  } else {
+    const bordes=[r.pArr,r.pAb,r.pIzq,r.pDer];
+    const anyPas=bordes.some(x=>x>0);
+    const allEq=bordes.every(x=>x===bordes[0]);
+    let pasTxt="";
+    if(anyPas) pasTxt = allEq ? `paspartú ${dimTxt(r.pArr)} cm` : `paspartú ar ${dimTxt(r.pArr)} · ab ${dimTxt(r.pAb)} · iz ${dimTxt(r.pIzq)} · de ${dimTxt(r.pDer)} cm`;
+    const marcoTxt = r.marcoCm>0 ? `marco ${dimTxt(r.marcoCm)} cm` : "";
+    const extra=[pasTxt,marcoTxt].filter(Boolean).join(" + ");
+    $("tamFinalHint").innerHTML = `Lámina ${dimTxt(r.A)} × ${dimTxt(r.H)} cm → <b>tamaño final ${dimTxt(r.finalW)} × ${dimTxt(r.finalH)} cm</b>${extra?` (${extra})`:""}`;
+  }
+  $("editorBreakdown").innerHTML = `<div class="ed-t">Detalle del costo (interno)</div>` + costBreakdownHTML(r, it);
+  const cm=$("compra");
+  if(esImpresion){
+    const lam=r.sel.l;
+    if(lam && num(lam.precioM2)>0){
+      cm.style.display="block";
+      cm.innerHTML=`Impresión · <b>${lam.nombre}</b><br>${r.areaLamina.toFixed(3).replace(".",",")} m² × ${fmt(num(lam.precioM2))}/m² = <b>${fmt(r.lamCost)}</b> en material.`;
+    } else { cm.style.display="none"; cm.innerHTML=""; }
+  } else if(r.sel.m){
+    const m=r.sel.m; const partes=[];
+    if(m.codigo) partes.push(`cód. <span class="cod">${m.codigo}</span>`);
+    if(m.perfil) partes.push(`perfil ${m.perfil} mm`);
+    if(m.proveedor) partes.push(m.proveedor);
+    const det=partes.length?` — ${partes.join(" · ")}`:"";
+    cm.style.display="block";
+    cm.innerHTML=`Para el taller · <b>${m.nombre}</b>${det}<br>`+
+      `Moldura: <b>${r.metrosLineales.toFixed(2).replace(".",",")} m lineales</b> (con esquinas, antes de merma) · cortar vidrio/MDF/fondo a <b>${dimTxt(r.matW)} × ${dimTxt(r.matH)} cm</b>.`;
+  } else { cm.style.display="none"; cm.innerHTML=""; }
+}
+
+/* Al cambiar el tipo de trabajo, ajusta los costos de marco */
+function onTipoChange(){
+  if($("selTipo").value==="impresion"){
+    $("manoObra").value=0; $("envio").value=0; $("insumos").value=0;
+  } else {
+    $("manoObra").value=state.params.manoObra; $("envio").value=state.params.envio; $("insumos").value=state.params.insumos;
+  }
+  renderEditor();
+}
+
+function resetEditor(){
+  editingId=null;
+  $("selTipo").value="marco";
+  $("descripcion").value="";
+  $("ancho").value=30; $("alto").value=40; $("cantidad").value=1; $("chkMdf").checked=true;
+  $("pasArr").value=0; $("pasAb").value=0; $("pasIzq").value=0; $("pasDer").value=0;
+  $("manoObra").value=state.params.manoObra; $("envio").value=state.params.envio; $("insumos").value=state.params.insumos;
+  if(state.molduras[0]) $("selMoldura").value=state.molduras[0].id;
+  if(state.vidrios[0]) $("selVidrio").value=state.vidrios[0].id;
+  if(state.paspartus[0]) $("selPaspartu").value=state.paspartus[0].id;
+  if(state.laminas[0]) $("selLamina").value=state.laminas[0].id;
+  $("editorMode").textContent="";
+  $("btnAddItem").textContent="Agregar al pedido";
+  $("btnCancelEdit").style.display="none";
+  renderEditor();
+}
+
+function addOrUpdateItem(){
+  const it=readEditor();
+  if(!(it.ancho>0 && it.alto>0)){ $("ancho").focus(); return; }
+  const idx=order.items.findIndex(x=>x.id===it.id);
+  if(idx>=0) order.items[idx]=it; else order.items.push(it);
+  resetEditor();
+  renderItems(); renderOrder();
+}
+
+function editItem(id){
+  const it=order.items.find(x=>x.id===id); if(!it) return;
+  editingId=id;
+  $("selTipo").value=it.tipo||"marco";
+  $("descripcion").value=it.descripcion||"";
+  $("ancho").value=it.ancho; $("alto").value=it.alto; $("cantidad").value=it.cantidad; $("chkMdf").checked=!!it.mdfOn;
+  const fbp=num(it.paspartuAncho)||0;
+  $("pasArr").value=it.pasArr!==undefined?num(it.pasArr):fbp;
+  $("pasAb").value =it.pasAb !==undefined?num(it.pasAb ):fbp;
+  $("pasIzq").value=it.pasIzq!==undefined?num(it.pasIzq):fbp;
+  $("pasDer").value=it.pasDer!==undefined?num(it.pasDer):fbp;
+  $("manoObra").value=it.manoObra; $("envio").value=it.envio; $("insumos").value=it.insumos;
+  if(state.molduras.some(x=>x.id===it.molduraId)) $("selMoldura").value=it.molduraId;
+  if(state.vidrios.some(x=>x.id===it.vidrioId)) $("selVidrio").value=it.vidrioId;
+  if(state.paspartus.some(x=>x.id===it.paspartuId)) $("selPaspartu").value=it.paspartuId;
+  if(state.laminas.some(x=>x.id===it.laminaId)) $("selLamina").value=it.laminaId;
+  $("editorMode").textContent="· editando";
+  $("btnAddItem").textContent="Guardar cambios";
+  $("btnCancelEdit").style.display="inline-flex";
+  renderEditor();
+  if($("descripcion").scrollIntoView) $("descripcion").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function removeItem(id){
+  order.items=order.items.filter(x=>x.id!==id);
+  if(editingId===id) resetEditor();
+  renderItems(); renderOrder();
+}
+
+function renderItems(){
+  const cont=$("itemsList");
+  $("itemCount").textContent = order.items.length ? `· ${order.items.length}` : "";
+  if(!order.items.length){
+    cont.innerHTML=`<div class="item-empty">Aún no hay cuadros. Configura uno arriba y toca “Agregar al pedido”.</div>`;
+    return;
+  }
+  cont.innerHTML = order.items.map((it,i)=>{
+    const r=calcItem(it);
+    const esImp = it.tipo==="impresion";
+    const partes=[];
+    if(esImp){ partes.push("Impresión"); if(r.sel.l) partes.push(r.sel.l.nombre); }
+    else {
+      if(r.sel.m) partes.push(r.sel.m.nombre);
+      if(r.sel.v && r.vidCost>0) partes.push(r.sel.v.nombre);
+      if(r.sel.p && r.pasCost>0) partes.push(r.sel.p.nombre);
+      if(r.sel.l && r.lamCost>0) partes.push(r.sel.l.nombre);
+    }
+    const meta = esImp
+      ? `${dimTxt(r.A)}×${dimTxt(r.H)} cm`+(partes.length?` · ${partes.join(" · ")}`:"")
+      : `final ${dimTxt(r.finalW)}×${dimTxt(r.finalH)} cm · lámina ${dimTxt(r.A)}×${dimTxt(r.H)}`+(partes.length?` · ${partes.join(" · ")}`:"");
+    const titulo=it.descripcion?it.descripcion:(esImp?`Impresión ${i+1}`:`Cuadro ${i+1}`);
+    return `<div class="item-card" data-id="${it.id}">
+      <div class="ic-main">
+        <div class="ic-title">${titulo} ${it.cantidad>1?`<span class="ic-qty">×${it.cantidad}</span>`:""}</div>
+        <div class="ic-meta">${meta}</div>
+      </div>
+      <div class="ic-right">
+        <div class="ic-price">${fmt(r.totalItem)}</div>
+        <div class="ic-actions">
+          <button class="iconbtn" data-edit="${it.id}" title="Editar">Editar</button>
+          <button class="iconbtn" data-remove="${it.id}" title="Eliminar">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function calcOrder(){
+  let cuadros=0, ivaTasa=0;
+  order.items.forEach(it=>{ const r=calcItem(it); cuadros+=r.totalItem; ivaTasa=r.ivaTasa; });
+  const d=despachoSel();
+  const despachoCharge = (d && !d.porPagar) ? num(d.precio) : 0;
+  const total = cuadros + despachoCharge;
+  const netoCuadros = ivaTasa>0 ? cuadros/(1+ivaTasa) : cuadros;
+  return {cuadros, netoCuadros, ivaTasa, d, despachoCharge, total};
+}
+
+function renderOrder(){
+  const o=calcOrder();
+  $("precioFinal").textContent = fmt(o.total);
+  $("precioNota").textContent = o.ivaTasa>0 ? "IVA incluido" : "sin IVA";
+  const L=(lbl,val,cls="")=>`<div class="ln ${cls}"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+  let h="";
+  if(!order.items.length){
+    h=`<div class="ln muted"><span class="lbl">Agrega cuadros para ver el total.</span><span class="val"></span></div>`;
+  } else {
+    order.items.forEach((it,i)=>{ const r=calcItem(it); const lbl=it.descripcion||(it.tipo==="impresion"?`Impresión ${i+1}`:`Cuadro ${i+1}`); h+=L(lbl+(it.cantidad>1?` ×${it.cantidad}`:""), fmt(r.totalItem)); });
+    h+=L("Subtotal cuadros", fmt(o.cuadros), "sub");
+    if(o.d){
+      if(o.d.porPagar) h+=L(`Despacho · ${o.d.nombre}`, "por pagar", "ship muted");
+      else if(o.despachoCharge>0) h+=L(`Despacho · ${o.d.nombre}`, fmt(o.despachoCharge), "ship");
+      else h+=L(`Despacho · ${o.d.nombre}`, "gratis", "ship muted");
+    }
+    if(o.ivaTasa>0) h+=L(`IVA (${(o.ivaTasa*100).toFixed(0)}%) en cuadros`, fmt(o.cuadros-o.netoCuadros), "muted");
+    h+=L("Total del pedido", fmt(o.total), "tot");
+  }
+  $("breakdown").innerHTML=h;
+  const pills=[];
+  if(order.items.length) pills.push(`${order.items.length} cuadro${order.items.length>1?"s":""}`);
+  if(o.d) pills.push(o.d.porPagar?"despacho por pagar":(o.despachoCharge>0?o.d.nombre:"retiro"));
+  $("pills").innerHTML = pills.map(p=>`<span class="pill">${p}</span>`).join("");
+}
+
+/* ---------------- Selects de la vista cotizar ---------------- */
+function fillSelect(sel, arr, fmtLabel){
+  const cur=sel.value;
+  sel.innerHTML = arr.map(x=>`<option value="${x.id}">${fmtLabel(x)}</option>`).join("");
+  if(arr.some(x=>x.id===cur)) sel.value=cur;
+}
+function refreshSelects(){
+  fillSelect($("selMoldura"), state.molduras, x=> x.codigo ? `${x.nombre} · ${x.codigo}` : x.nombre);
+  fillSelect($("selVidrio"), state.vidrios, x=> x.precioM2>0?`${x.nombre} · ${fmt(x.precioM2)}/m²`:x.nombre);
+  fillSelect($("selPaspartu"), state.paspartus, x=> x.precioM2>0?`${x.nombre} · ${fmt(x.precioM2)}/m²`:x.nombre);
+  fillSelect($("selLamina"), state.laminas, x=> x.precioM2>0?`${x.nombre} · ${fmt(x.precioM2)}/m²`:x.nombre);
+  fillSelect($("selDespacho"), state.despachos, x=> x.porPagar?`${x.nombre} · por pagar`:(num(x.precio)>0?`${x.nombre} · ${fmt(x.precio)}`:`${x.nombre} · gratis`));
+}
+
+/* ---------------- Tablas de catálogo ---------------- */
+function rowInput(val, key, id, idx, cls="num", step="100"){
+  return `<input class="${cls}" type="${cls==='num'?'number':'text'}" step="${step}" value="${val}" data-key="${key}" data-id="${id}" data-idx="${idx}">`;
+}
+function renderTablas(){
+  // Molduras
+  $("tblMolduras").querySelector("tbody").innerHTML = state.molduras.map(x=>`
+    <tr data-id="${x.id}">
+      <td class="col-name"><input type="text" value="${x.nombre}" data-f="nombre"></td>
+      <td><input type="text" value="${x.codigo||""}" data-f="codigo" placeholder="—"></td>
+      <td><input type="text" value="${x.proveedor||""}" data-f="proveedor" placeholder="—"></td>
+      <td><input class="num" type="number" step="100" value="${x.precioListon}" data-f="precioListon"></td>
+      <td><input class="num" type="number" step="0.1" value="${x.largoListon}" data-f="largoListon"></td>
+      <td><input type="text" value="${x.perfil||""}" data-f="perfil" placeholder="20x20"></td>
+      <td class="del"><button class="iconbtn" data-del="molduras" title="Eliminar">✕</button></td>
+    </tr>`).join("");
+
+  const simple=(tbl,coll)=>{
+    $(tbl).querySelector("tbody").innerHTML = state[coll].map(x=>`
+      <tr data-id="${x.id}">
+        <td class="col-name"><input type="text" value="${x.nombre}" data-f="nombre"></td>
+        <td><input class="num" type="number" step="100" value="${x.precioM2}" data-f="precioM2"></td>
+        <td class="del"><button class="iconbtn" data-del="${coll}" title="Eliminar">✕</button></td>
+      </tr>`).join("");
+  };
+  simple("tblVidrios","vidrios");
+  simple("tblPaspartus","paspartus");
+  simple("tblLaminas","laminas");
+
+  $("tblDespachos").querySelector("tbody").innerHTML = state.despachos.map(x=>`
+    <tr data-id="${x.id}">
+      <td class="col-name"><input type="text" value="${x.nombre}" data-f="nombre"></td>
+      <td><input class="num" type="number" step="100" value="${num(x.precio)}" data-f="precio"></td>
+      <td style="text-align:center"><input type="checkbox" data-f="porPagar" ${x.porPagar?"checked":""} style="width:18px;height:18px;accent-color:var(--accent)"></td>
+      <td class="del"><button class="iconbtn" data-del="despachos" title="Eliminar">✕</button></td>
+    </tr>`).join("");
+}
+
+/* ---------------- Cargar valores a inputs de ajustes ---------------- */
+function fillSettings(){
+  $("mdfPrecio").value=state.mdf.precioPlancha;
+  $("mdfAncho").value=state.mdf.anchoPlancha;
+  $("mdfAlto").value=state.mdf.altoPlancha;
+  updateMdfHint();
+  $("pMerma").value=state.params.merma;
+  $("pMarkup").value=state.params.markup;
+  $("pManoObra").value=state.params.manoObra;
+  $("pEnvio").value=state.params.envio;
+  $("pInsumos").value=state.params.insumos;
+  $("pRedondeo").value=state.params.redondeo;
+  $("pFolio").value=state.params.folio;
+  $("pIvaActivo").checked=state.params.ivaActivo;
+  $("pIvaTasa").value=state.params.ivaTasa;
+  $("marcaNombre").value=state.marca.nombre;
+  $("marcaContacto").value=state.marca.contacto;
+  $("logoPreview").src=logoSrc();
+  if($("ghOwner")){
+    $("ghOwner").value=state.sync.owner||"";
+    $("ghRepo").value=state.sync.repo||"";
+    $("ghPath").value=state.sync.path||"datos-bianco.json";
+    $("ghBranch").value=state.sync.branch||"main";
+    $("ghToken").value=ghGetToken();
+  }
+  updateMarkupHint();
+}
+function updateMdfHint(){
+  const a=num($("mdfAncho").value), b=num($("mdfAlto").value), pr=num($("mdfPrecio").value);
+  const area=a*b;
+  $("mdfDerivado").textContent = area>0 ? `Equivale a ${fmt(pr/area)} por m² (${area.toFixed(2)} m² por plancha).` : "Ingresa dimensiones para ver el precio por m².";
+}
+function updateMarkupHint(){
+  const mk=num($("pMarkup").value);
+  const margen = mk>0 ? Math.round((1 - 1/mk)*100) : 0;
+  $("markupHint").textContent = `Multiplicas el costo por este número. ×${mk||0} equivale a un margen de ${margen}%.`;
+}
+
+/* ---------------- Cotización del cliente ---------------- */
+function folioNum(){
+  if(currentQuoteId){
+    const q=state.cotizaciones.find(x=>x.id===currentQuoteId);
+    if(q && q.folio) return q.folio;
+  }
+  return Math.max(1, parseInt(state.params.folio,10) || 1);
+}
+function folioTxt(n){
+  const v = n!==undefined ? n : folioNum();
+  return "N° " + String(Math.max(1,parseInt(v,10)||1)).padStart(4,"0");
+}
+function buildQuoteSheet(){
+  const o=calcOrder();
+  const cli=$("cliente").value.trim(), rut=$("rut").value.trim(), email=$("email").value.trim();
+  const tel=$("telefono").value.trim(), dir=$("direccion").value.trim(), coment=$("comentarios").value.trim();
+  const esc=(s)=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+  // Filas de la tabla (un cuadro/impresión por fila)
+  let rows="";
+  order.items.forEach((it)=>{
+    const r=calcItem(it);
+    const esImp = it.tipo==="impresion";
+    const desc = it.descripcion ? it.descripcion : (r.sel.l ? r.sel.l.nombre : (esImp?"Impresión":"Cuadro"));
+    const det = (r.sel.l && r.lamCost>0) ? r.sel.l.nombre : "";
+    const mold = esImp ? "Sin marco" : (r.sel.m ? r.sel.m.nombre : "—");
+    const pas = (!esImp && r.sel.p && r.pasCost>0) ? r.sel.p.nombre : "No aplica";
+    rows += `<tr>
+      <td class="c">${it.cantidad||1}</td>
+      <td class="desc"><b>${esc(desc)}</b></td>
+      <td class="det">${esc(det)}</td>
+      <td class="center">${esc(mold)}</td>
+      <td class="center">${esc(pas)}</td>
+      <td class="num">${dimTxt(r.finalW)}</td>
+      <td class="num">${dimTxt(r.finalH)}</td>
+      <td class="money">${fmt(r.precioUnit)}</td>
+      <td class="money">${fmt(r.totalItem)}</td>
+    </tr>`;
+  });
+  // Fila de despacho (como en la referencia)
+  if(o.d && (o.despachoCharge>0 || o.d.porPagar)){
+    const val = o.d.porPagar ? "Por pagar" : fmt(o.despachoCharge);
+    rows += `<tr class="ship">
+      <td class="c"></td>
+      <td class="desc"><b>${esc((o.d.nombre||"").toUpperCase())}</b></td>
+      <td class="det"></td><td class="center"></td><td class="center"></td>
+      <td class="num"></td><td class="num"></td><td class="money"></td>
+      <td class="money">${val}</td>
+    </tr>`;
+  }
+  if(!order.items.length) rows = `<tr><td class="center" colspan="9" style="padding:18px">Sin cuadros en el pedido</td></tr>`;
+
+  // Bloque de cliente
+  const cR=(lblA,valA,lblB,valB)=>`<tr><td class="lbl">${lblA}</td><td>${esc(valA)}</td><td class="lbl">${lblB}</td><td>${esc(valB)}</td></tr>`;
+  let clientRows = cR("NOMBRE CLIENTE:", cli, "NÚMERO:", tel);
+  clientRows += cR("CORREO ELECTRÓNICO:", email, "FECHA CONFIRMACIÓN:", "");
+  if(rut||dir) clientRows += cR("RUT:", rut, "DIRECCIÓN:", dir);
+
+  const contacto = state.marca.contacto ? esc(state.marca.contacto).replace(/\n/g,"<br>") : "";
+  const totRows = `
+    <tr><td class="lbl">SUB TOTAL</td><td class="money">${fmt(o.total)}</td></tr>
+    <tr class="grand"><td class="lbl">TOTAL${o.ivaTasa>0?" IVA INCLUIDO":""}</td><td class="money">${fmt(o.total)}</td></tr>`;
+
+  $("quoteSheet").innerHTML = `
+    <div class="sheet-inner">
+      <div class="qs-head">
+        <div class="qs-head-l">
+          <div class="qs-title">COTIZACIÓN ${folioNum()}</div>
+          ${contacto?`<div class="qs-contact">${contacto}</div>`:""}
+        </div>
+        <div class="qs-logo-wrap"><img class="qs-logo" src="${logoSrc()}" alt="logo"></div>
+      </div>
+
+      <table class="qs-table qs-client">${clientRows}</table>
+      <div class="qs-tamano">TAMAÑO FINAL</div>
+
+      <div class="qs-scroll">
+        <table class="qs-items">
+          <thead><tr>
+            <th>C</th><th>Desc. Lámina</th><th>Detalles</th><th>Moldura</th><th>Paspartú</th><th>Ancho</th><th>Alto</th><th>Precio</th><th>Total</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+
+      <table class="qs-tot">${totRows}</table>
+
+      <div class="qs-notes">
+        <div class="qs-notes-t">Notas o requerimientos especiales</div>
+        ${coment?esc(coment).replace(/\n/g,"<br>"):""}
+      </div>
+
+      <div class="qs-confirm">Fecha confirmación cliente: ____________________</div>
+    </div>`;
+}
+function openPreview(){ buildQuoteSheet(); $("previewOverlay").classList.add("open"); document.body.style.overflow="hidden"; }
+function closePreview(){ $("previewOverlay").classList.remove("open"); document.body.style.overflow=""; }
+function doPrint(){ window.print(); }
+
+/* ---------------- Cotizaciones guardadas ---------------- */
+function readClient(){
+  return {
+    cliente:$("cliente").value.trim(), rut:$("rut").value.trim(), email:$("email").value.trim(),
+    telefono:$("telefono").value.trim(), direccion:$("direccion").value.trim(),
+    despachoId:$("selDespacho").value, comentarios:$("comentarios").value.trim()
+  };
+}
+function gatherOrder(){
+  const o=calcOrder();
+  return Object.assign(readClient(), {
+    items: JSON.parse(JSON.stringify(order.items)),
+    total: o.total
+  });
+}
+function updateQuoteIndicator(){
+  const ind=$("quoteIndicator");
+  if(currentQuoteId){
+    const q=state.cotizaciones.find(x=>x.id===currentQuoteId);
+    ind.textContent = q ? `· editando ${folioTxt(q.folio)}` : "";
+  } else ind.textContent="";
+}
+function flashSaved(msg){
+  const el=$("quoteSaved"); el.innerHTML=msg;
+  setTimeout(()=>{ if(el) el.textContent=""; }, 3000);
+}
+function saveQuote(){
+  if(!order.items.length){ flashSaved("Agrega al menos un cuadro antes de guardar."); return; }
+  const data=gatherOrder();
+  if(currentQuoteId){
+    const i=state.cotizaciones.findIndex(x=>x.id===currentQuoteId);
+    if(i>=0){
+      state.cotizaciones[i]=Object.assign({}, state.cotizaciones[i], data, {fecha:state.cotizaciones[i].fecha, folio:state.cotizaciones[i].folio});
+      flashSaved(`Cotización ${folioTxt(state.cotizaciones[i].folio)} actualizada <b>✓</b>`);
+    }
+  } else {
+    const folio=Math.max(1, parseInt(state.params.folio,10)||1);
+    const q=Object.assign({id:uid(), folio:folio, fecha:Date.now()}, data);
+    state.cotizaciones.unshift(q);
+    state.params.folio=folio+1;
+    currentQuoteId=q.id;
+    flashSaved(`Guardada como ${folioTxt(folio)} <b>✓</b>`);
+  }
+  persist(); renderCotizaciones(); updateQuoteIndicator(); renderOrder();
+}
+function loadQuote(id){
+  const q=state.cotizaciones.find(x=>x.id===id); if(!q) return;
+  currentQuoteId=id;
+  $("cliente").value=q.cliente||""; $("rut").value=q.rut||""; $("email").value=q.email||"";
+  $("telefono").value=q.telefono||""; $("direccion").value=q.direccion||""; $("comentarios").value=q.comentarios||"";
+  if(state.despachos.some(d=>d.id===q.despachoId)) $("selDespacho").value=q.despachoId;
+  else if(state.despachos[0]) $("selDespacho").value=state.despachos[0].id;
+  order.items = JSON.parse(JSON.stringify(q.items||[]));
+  resetEditor(); renderItems(); renderOrder(); updateQuoteIndicator();
+  switchTab("cotizar");
+  if(window.scrollTo) try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){}
+}
+function deleteQuote(id){
+  state.cotizaciones=state.cotizaciones.filter(x=>x.id!==id);
+  if(currentQuoteId===id){ currentQuoteId=null; updateQuoteIndicator(); }
+  persist(); renderCotizaciones();
+}
+function viewQuote(id){ loadQuote(id); openPreview(); }
+function renderCotizaciones(){
+  const cont=$("quotesList");
+  $("quotesCount").textContent = state.cotizaciones.length ? `· ${state.cotizaciones.length}` : "";
+  if(!state.cotizaciones.length){
+    cont.innerHTML=`<div class="quote-empty">Todavía no tienes cotizaciones guardadas. Arma un pedido en <b>Cotizar</b> y toca “Guardar cotización”.</div>`;
+    return;
+  }
+  cont.innerHTML = state.cotizaciones.map(q=>{
+    const fecha = q.fecha ? new Date(q.fecha).toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"}) : "";
+    const n = (q.items||[]).length;
+    const sub = `${fecha} · ${n} ${n===1?"cuadro":"cuadros"}`;
+    const nombre = q.cliente ? q.cliente : "Sin nombre";
+    const aprobado = state.pedidos.some(p=>p.cotizacionId===q.id);
+    return `<div class="quote-card" data-id="${q.id}">
+      <div class="qc-folio">${folioTxt(q.folio)}</div>
+      <div class="qc-info">
+        <div class="qc-name">${nombre}</div>
+        <div class="qc-sub">${sub}</div>
+      </div>
+      <div class="qc-total">${fmt(q.total||0)}</div>
+      <div class="qc-btns">
+        ${aprobado ? `<span class="ped-badge" style="align-self:center">En pedidos ✓</span>` : `<button class="btn primary" data-approve="${q.id}">Aprobar → pedido</button>`}
+        <button class="btn" data-open="${q.id}">Abrir / editar</button>
+        <button class="btn" data-view="${q.id}">Ver / PDF</button>
+        <button class="iconbtn" data-del-quote="${q.id}" title="Eliminar" style="border:1px solid var(--line);border-radius:6px;padding:6px 9px">✕</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------- Pedidos (seguimiento del taller) ---------------- */
+const ESTADOS=[
+  {v:"pendiente", l:"Pendiente"},
+  {v:"materiales", l:"Materiales pedidos"},
+  {v:"proceso", l:"En proceso"},
+  {v:"listo", l:"Listo para entregar"},
+  {v:"entregado", l:"Entregado"}
+];
+const PAGOS=[ {v:"pendiente",l:"Pago pendiente"}, {v:"abonado",l:"Abonado"}, {v:"pagado",l:"Pagado"} ];
+let pedidoFiltro="todos";
+
+function estadoLabel(v){ const e=ESTADOS.find(x=>x.v===v); return e?e.l:"Pendiente"; }
+function hoyISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+
+function aprobarCotizacion(cotId){
+  const q=state.cotizaciones.find(x=>x.id===cotId); if(!q) return;
+  if(state.pedidos.some(p=>p.cotizacionId===cotId)){ switchTab("pedidos"); return; }
+  const ped={
+    id:uid(), cotizacionId:cotId, folio:q.folio, cliente:q.cliente||"", total:q.total||0,
+    nItems:(q.items||[]).length, telefono:q.telefono||"",
+    fechaAprobacion:hoyISO(), fechaEntrega:"", estado:"pendiente", pago:"pendiente", seguimiento:""
+  };
+  state.pedidos.unshift(ped);
+  persist(); renderCotizaciones(); renderPedidos(); switchTab("pedidos");
+}
+function updatePedido(id, field, value){
+  const p=state.pedidos.find(x=>x.id===id); if(!p) return;
+  p[field]=value; persist();
+  if(field==="estado") renderPedidos(); // refrescar color/orden
+}
+function deletePedido(id){
+  state.pedidos=state.pedidos.filter(x=>x.id!==id);
+  persist(); renderPedidos(); renderCotizaciones();
+}
+function verCotizacionDePedido(cotId){
+  if(state.cotizaciones.some(x=>x.id===cotId)) viewQuote(cotId);
+}
+function renderPedidosFilter(){
+  const cont=$("pedidosFilter");
+  const opts=[{v:"todos",l:"Todos"}].concat(ESTADOS);
+  cont.innerHTML=opts.map(o=>{
+    const count = o.v==="todos" ? state.pedidos.length : state.pedidos.filter(p=>p.estado===o.v).length;
+    return `<button class="fbtn" data-filtro="${o.v}" aria-pressed="${pedidoFiltro===o.v}">${o.l}${count?` (${count})`:""}</button>`;
+  }).join("");
+}
+function renderPedidos(){
+  renderPedidosFilter();
+  const cont=$("pedidosList");
+  $("pedidosCount").textContent = state.pedidos.length ? `· ${state.pedidos.length}` : "";
+  if(!state.pedidos.length){
+    cont.innerHTML=`<div class="quote-empty">Aún no hay pedidos. En <b>Cotizaciones</b>, aprueba una con “Aprobar → pedido” y aparecerá acá para seguimiento.</div>`;
+    return;
+  }
+  const orden={pendiente:0,materiales:1,proceso:2,listo:3,entregado:4};
+  let lista=state.pedidos.slice();
+  if(pedidoFiltro!=="todos") lista=lista.filter(p=>p.estado===pedidoFiltro);
+  lista.sort((a,b)=> (orden[a.estado]-orden[b.estado]) || ((b.fechaAprobacion||"").localeCompare(a.fechaAprobacion||"")));
+  if(!lista.length){ cont.innerHTML=`<div class="quote-empty">No hay pedidos en este estado.</div>`; return; }
+
+  const opt=(arr,sel)=>arr.map(o=>`<option value="${o.v}" ${o.v===sel?"selected":""}>${o.l}</option>`).join("");
+  cont.innerHTML = lista.map(p=>{
+    const existeCot = state.cotizaciones.some(x=>x.id===p.cotizacionId);
+    const fApr = p.fechaAprobacion ? new Date(p.fechaAprobacion+"T00:00").toLocaleDateString("es-CL",{day:"2-digit",month:"short"}) : "—";
+    return `<div class="ped-card est-${p.estado}" data-id="${p.id}">
+      <div class="ped-top">
+        <div>
+          <div class="ped-folio">${folioTxt(p.folio)}</div>
+          <div class="ped-name">${p.cliente||"Sin nombre"}</div>
+          <div class="ped-sub">Aprobado ${fApr} · ${p.nItems||0} ${p.nItems===1?"cuadro":"cuadros"}${p.telefono?` · ${p.telefono}`:""}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="ped-badge">${estadoLabel(p.estado)}</div>
+          <div class="ped-total" style="margin-top:6px">${fmt(p.total||0)}</div>
+        </div>
+      </div>
+      <div class="ped-grid">
+        <div><label>Estado de producción</label><select data-f="estado">${opt(ESTADOS,p.estado)}</select></div>
+        <div><label>Pago</label><select data-f="pago">${opt(PAGOS,p.pago||"pendiente")}</select></div>
+        <div><label>Fecha de aprobación</label><input type="date" data-f="fechaAprobacion" value="${p.fechaAprobacion||""}"></div>
+        <div><label>Entrega comprometida</label><input type="date" data-f="fechaEntrega" value="${p.fechaEntrega||""}"></div>
+      </div>
+      <textarea data-f="seguimiento" placeholder="Notas de seguimiento (avances, pendientes, contacto con el cliente…)">${(p.seguimiento||"").replace(/</g,"&lt;")}</textarea>
+      <div class="ped-foot">
+        ${existeCot?`<button class="btn" data-ver-cot="${p.cotizacionId}">Ver cotización</button>`:`<span class="ped-sub" style="align-self:center">Cotización eliminada</span>`}
+        <button class="iconbtn" data-del-ped="${p.id}" title="Eliminar pedido" style="border:1px solid var(--line);border-radius:6px;padding:6px 9px">✕</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------- Exportar / Importar ---------------- */
+function exportar(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="taller-momo-catalogo.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importar(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const obj=JSON.parse(reader.result);
+      if(!obj.molduras||!obj.params) throw new Error("formato");
+      state=migrate(obj); order.items=[]; currentQuoteId=null;
+      renderTablas(); fillSettings(); refreshSelects(); resetEditor(); renderItems(); renderOrder(); renderCotizaciones(); renderPedidos(); updateQuoteIndicator(); persist();
+      $("savedMsg").innerHTML="Catálogo importado <b>✓</b>";
+    }catch(e){ $("savedMsg").textContent="No se pudo leer el archivo."; }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------------- Sincronización con GitHub ----------------
+   El token se guarda SOLO en localStorage (clave aparte), nunca en el
+   estado ni en el JSON que se sube. Subir/Bajar es manual. */
+const GH_TOKEN_KEY="tallermomo:ghtoken";
+function ghGetToken(){ try{ return hasLocalStorage()? (localStorage.getItem(GH_TOKEN_KEY)||"") : ""; }catch(e){ return ""; } }
+function ghSetToken(t){ try{ if(hasLocalStorage()){ if(t) localStorage.setItem(GH_TOKEN_KEY,t); else localStorage.removeItem(GH_TOKEN_KEY); } }catch(e){} }
+function ghMsg(html,err){ const el=$("ghMsg"); el.innerHTML=html; el.style.color=err?"#b4452f":""; }
+function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(b64){ return decodeURIComponent(escape(atob(b64.replace(/\n/g,"")))); }
+function ghConf(){
+  const c={ owner:$("ghOwner").value.trim(), repo:$("ghRepo").value.trim(),
+    path:($("ghPath").value.trim()||"datos-bianco.json"), branch:($("ghBranch").value.trim()||"main"),
+    token:$("ghToken").value.trim()||ghGetToken() };
+  return c;
+}
+function ghValid(c){
+  if(!c.owner||!c.repo){ ghMsg("Falta usuario o repositorio.",true); return false; }
+  if(!c.token){ ghMsg("Falta el token de acceso.",true); return false; }
+  return true;
+}
+function ghHeaders(c){
+  return { "Authorization":"Bearer "+c.token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" };
+}
+function ghUrl(c){ return `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${c.path.split("/").map(encodeURIComponent).join("/")}`; }
+
+async function ghFetchMeta(c){
+  // devuelve {sha, json} si existe; {sha:null} si no existe (404)
+  const r=await fetch(ghUrl(c)+`?ref=${encodeURIComponent(c.branch)}`,{headers:ghHeaders(c)});
+  if(r.status===404) return {sha:null};
+  if(!r.ok) throw new Error("GitHub respondió "+r.status);
+  const data=await r.json();
+  let json=null; try{ json=b64decode(data.content); }catch(e){}
+  return {sha:data.sha, json};
+}
+async function ghPush(){
+  const c=ghConf(); if(!ghValid(c)) return;
+  ghSetToken(c.token);
+  state.sync={owner:c.owner,repo:c.repo,path:c.path,branch:c.branch}; persist();
+  ghMsg("Subiendo…");
+  try{
+    let sha=null;
+    try{ const meta=await ghFetchMeta(c); sha=meta.sha; }catch(e){}
+    const payload=JSON.stringify(state,null,2);
+    const body={ message:"Actualizar datos Taller/Tienda Bianco "+new Date().toISOString(),
+      content:b64encode(payload), branch:c.branch };
+    if(sha) body.sha=sha;
+    const r=await fetch(ghUrl(c),{method:"PUT",headers:Object.assign(ghHeaders(c),{"Content-Type":"application/json"}),body:JSON.stringify(body)});
+    if(!r.ok){ const t=await r.text(); throw new Error("GitHub "+r.status+(r.status===401||r.status===403?" (revisa el token y sus permisos)":r.status===404?" (revisa usuario/repo/rama)":"")); }
+    ghMsg("Guardado en GitHub <b>✓</b>");
+  }catch(e){ ghMsg("No se pudo guardar: "+e.message, true); }
+}
+async function ghPull(){
+  const c=ghConf(); if(!ghValid(c)) return;
+  ghSetToken(c.token);
+  ghMsg("Cargando…");
+  try{
+    const meta=await ghFetchMeta(c);
+    if(meta.sha===null){ ghMsg("No existe el archivo todavía. Primero usa “Guardar en GitHub”.",true); return; }
+    const obj=JSON.parse(meta.json);
+    if(!obj.molduras||!obj.params) throw new Error("el archivo no tiene el formato esperado");
+    state=migrate(obj); order.items=[]; currentQuoteId=null;
+    state.sync={owner:c.owner,repo:c.repo,path:c.path,branch:c.branch};
+    renderTablas(); fillSettings(); refreshSelects(); resetEditor(); renderItems(); renderOrder(); renderCotizaciones(); renderPedidos(); updateQuoteIndicator(); persist();
+    ghMsg("Cargado desde GitHub <b>✓</b>");
+  }catch(e){ ghMsg("No se pudo cargar: "+e.message, true); }
+}
+async function ghTest(){
+  const c=ghConf(); if(!ghValid(c)) return;
+  ghSetToken(c.token);
+  ghMsg("Probando…");
+  try{
+    const r=await fetch(`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}`,{headers:ghHeaders(c)});
+    if(r.status===401||r.status===403){ ghMsg("Token inválido o sin permisos.",true); return; }
+    if(r.status===404){ ghMsg("No encuentro el repositorio (revisa usuario/repo, y que el token lo incluya).",true); return; }
+    if(!r.ok){ ghMsg("GitHub respondió "+r.status,true); return; }
+    const data=await r.json();
+    ghMsg(`Conexión OK con <b>${data.full_name}</b>${data.private?" (privado ✓)":" (público ⚠)"}`);
+  }catch(e){ ghMsg("No se pudo conectar: "+e.message, true); }
+}
+
+/* ---------------- Eventos ---------------- */
+function bind(){
+  // Tabs
+  $("tab-cotizar").onclick=()=>switchTab("cotizar");
+  $("tab-cotizaciones").onclick=()=>switchTab("cotizaciones");
+  $("tab-pedidos").onclick=()=>switchTab("pedidos");
+  $("tab-materiales").onclick=()=>switchTab("materiales");
+
+  $("btnSave").onclick=saveQuote;
+  $("quotesList").addEventListener("click",(e)=>{
+    const ap=e.target.closest("[data-approve]"); if(ap){ aprobarCotizacion(ap.dataset.approve); return; }
+    const o=e.target.closest("[data-open]"); if(o){ loadQuote(o.dataset.open); return; }
+    const v=e.target.closest("[data-view]"); if(v){ viewQuote(v.dataset.view); return; }
+    const d=e.target.closest("[data-del-quote]"); if(d){ deleteQuote(d.dataset.delQuote); return; }
+  });
+
+  // Pedidos: edición inline + filtros
+  const pl=$("pedidosList");
+  pl.addEventListener("input",(e)=>{
+    const el=e.target; if(!el.dataset.f) return;
+    const id=el.closest(".ped-card").dataset.id;
+    updatePedido(id, el.dataset.f, el.value);
+  });
+  pl.addEventListener("change",(e)=>{
+    const el=e.target; if(!el.dataset.f) return;
+    const id=el.closest(".ped-card").dataset.id;
+    updatePedido(id, el.dataset.f, el.value);
+  });
+  pl.addEventListener("click",(e)=>{
+    const v=e.target.closest("[data-ver-cot]"); if(v){ verCotizacionDePedido(v.dataset.verCot); return; }
+    const d=e.target.closest("[data-del-ped]"); if(d){ deletePedido(d.dataset.delPed); return; }
+  });
+  $("pedidosFilter").addEventListener("click",(e)=>{
+    const b=e.target.closest("[data-filtro]"); if(!b) return;
+    pedidoFiltro=b.dataset.filtro; renderPedidos();
+  });
+
+  // Editor de cuadro: recalcular subtotal en vivo
+  ["ancho","alto","cantidad","selMoldura","selVidrio","selPaspartu","selLamina","pasArr","pasAb","pasIzq","pasDer","chkMdf","manoObra","envio","insumos"]
+    .forEach(id=>{ $(id).addEventListener("input",renderEditor); });
+  $("selTipo").addEventListener("change",onTipoChange);
+  $("btnAddItem").onclick=addOrUpdateItem;
+  $("btnCancelEdit").onclick=resetEditor;
+
+  // Pedido: despacho afecta el total
+  $("selDespacho").addEventListener("change",renderOrder);
+
+  // Lista de cuadros: editar / eliminar
+  $("itemsList").addEventListener("click",(e)=>{
+    const ed=e.target.closest("[data-edit]"); if(ed){ editItem(ed.dataset.edit); return; }
+    const rm=e.target.closest("[data-remove]"); if(rm){ removeItem(rm.dataset.remove); return; }
+  });
+
+  $("btnPrint").onclick=()=>{ if(!order.items.length){ $("btnAddItem").focus(); return; } openPreview(); };
+  $("btnClosePreview").onclick=closePreview;
+  $("btnDoPrint").onclick=doPrint;
+  $("previewOverlay").addEventListener("click",(e)=>{ if(e.target===$("previewOverlay")) closePreview(); });
+  document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && $("previewOverlay").classList.contains("open")) closePreview(); });
+  $("btnLimpiar").onclick=()=>{
+    order.items=[]; currentQuoteId=null;
+    ["cliente","rut","email","telefono","direccion","comentarios"].forEach(id=>$(id).value="");
+    if(state.despachos[0]) $("selDespacho").value=state.despachos[0].id;
+    resetEditor(); renderItems(); renderOrder(); updateQuoteIndicator();
+  };
+
+  // Catálogo: edición en vivo (delegación)
+  document.querySelectorAll("table.cat").forEach(tbl=>{
+    tbl.addEventListener("input",(e)=>{
+      const inp=e.target; if(!inp.dataset.f) return;
+      const tr=inp.closest("tr"); const id=tr.dataset.id;
+      const coll = tbl.id==="tblMolduras"?"molduras":tbl.id==="tblVidrios"?"vidrios":tbl.id==="tblPaspartus"?"paspartus":tbl.id==="tblLaminas"?"laminas":"despachos";
+      const item=state[coll].find(x=>x.id===id); if(!item) return;
+      const f=inp.dataset.f;
+      const textFields=["nombre","codigo","proveedor","perfil"];
+      if(f==="porPagar") item[f]=inp.checked;
+      else item[f] = textFields.includes(f) ? inp.value : num(inp.value);
+      refreshSelects(); renderEditor(); renderItems(); renderOrder(); persist();
+    });
+    tbl.addEventListener("click",(e)=>{
+      const b=e.target.closest("[data-del]"); if(!b) return;
+      const coll=b.dataset.del; const id=b.closest("tr").dataset.id;
+      state[coll]=state[coll].filter(x=>x.id!==id);
+      renderTablas(); refreshSelects(); renderEditor(); renderItems(); renderOrder(); persist();
+    });
+  });
+
+  // Agregar filas
+  document.querySelectorAll("[data-add]").forEach(btn=>{
+    btn.onclick=()=>{
+      const coll=btn.dataset.add;
+      if(coll==="molduras") state.molduras.push({id:uid(),nombre:"Nueva moldura",codigo:"",proveedor:"",precioListon:0,largoListon:3.0,perfil:""});
+      else if(coll==="despachos") state.despachos.push({id:uid(),nombre:"Nuevo despacho",precio:0,porPagar:false});
+      else state[coll].push({id:uid(),nombre:"Nuevo",precioM2:0});
+      renderTablas(); refreshSelects(); persist();
+    };
+  });
+
+  // MDF
+  ["mdfPrecio","mdfAncho","mdfAlto"].forEach(id=>$(id).addEventListener("input",()=>{
+    state.mdf.precioPlancha=num($("mdfPrecio").value);
+    state.mdf.anchoPlancha=num($("mdfAncho").value);
+    state.mdf.altoPlancha=num($("mdfAlto").value);
+    updateMdfHint(); renderEditor(); renderItems(); renderOrder(); persist();
+  }));
+
+  // Parámetros
+  const pmap={pMerma:"merma",pMarkup:"markup",pManoObra:"manoObra",pEnvio:"envio",pInsumos:"insumos",pRedondeo:"redondeo",pIvaTasa:"ivaTasa"};
+  Object.entries(pmap).forEach(([id,k])=>$(id).addEventListener("input",()=>{
+    state.params[k]=num($(id).value);
+    if(id==="pMarkup") updateMarkupHint();
+    renderEditor(); renderItems(); renderOrder(); persist();
+  }));
+  $("pIvaActivo").addEventListener("change",()=>{ state.params.ivaActivo=$("pIvaActivo").checked; renderEditor(); renderItems(); renderOrder(); persist(); });
+  $("pFolio").addEventListener("input",()=>{ state.params.folio=Math.max(1,parseInt($("pFolio").value,10)||1); persist(); });
+
+  // Marca
+  $("marcaNombre").addEventListener("input",()=>{ state.marca.nombre=$("marcaNombre").value; $("brandName").textContent=state.marca.nombre||"Taller Momo"; persist(); });
+  $("marcaContacto").addEventListener("input",()=>{ state.marca.contacto=$("marcaContacto").value; persist(); });
+
+  // Logo
+  $("btnLogo").onclick=()=>$("fileLogo").click();
+  $("fileLogo").addEventListener("change",(e)=>{
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size > 1500000){ $("savedMsg").textContent="El logo es muy pesado (máx ~1,5 MB)."; return; }
+    const reader=new FileReader();
+    reader.onload=()=>{ state.marca.logo=reader.result; $("logoPreview").src=reader.result; persist(); $("savedMsg").innerHTML="Logo actualizado <b>✓</b>"; };
+    reader.readAsDataURL(f);
+    e.target.value="";
+  });
+  $("btnLogoDefault").onclick=()=>{ state.marca.logo=""; $("logoPreview").src=logoSrc(); persist(); $("savedMsg").innerHTML="Logo por defecto <b>✓</b>"; };
+
+  // GitHub
+  if($("btnGhPush")){
+    $("btnGhPush").onclick=ghPush;
+    $("btnGhPull").onclick=ghPull;
+    $("btnGhTest").onclick=ghTest;
+    $("ghToken").addEventListener("change",()=>ghSetToken($("ghToken").value.trim()));
+    ["ghOwner","ghRepo","ghPath","ghBranch"].forEach(id=>$(id).addEventListener("change",()=>{
+      state.sync={owner:$("ghOwner").value.trim(),repo:$("ghRepo").value.trim(),path:$("ghPath").value.trim()||"datos-bianco.json",branch:$("ghBranch").value.trim()||"main"}; persist();
+    }));
+    $("btnGhForget").onclick=()=>{ ghSetToken(""); $("ghToken").value=""; ghMsg("Token olvidado en este navegador <b>✓</b>"); };
+  }
+
+  // Respaldo
+  $("btnExport").onclick=exportar;
+  $("btnImport").onclick=()=>$("fileImport").click();
+  $("fileImport").addEventListener("change",(e)=>{ if(e.target.files[0]) importar(e.target.files[0]); });
+}
+
+function switchTab(name){
+  const views={cotizar:"view-cotizar", cotizaciones:"view-cotizaciones", pedidos:"view-pedidos", materiales:"view-materiales"};
+  Object.keys(views).forEach(k=>{
+    $("tab-"+k).setAttribute("aria-selected", k===name);
+    $(views[k]).style.display = k===name ? "block":"none";
+  });
+  if(name==="cotizar"){ renderEditor(); renderItems(); renderOrder(); }
+  if(name==="cotizaciones") renderCotizaciones();
+  if(name==="pedidos") renderPedidos();
+}
+
+/* Limpieza/compatibilidad de estados guardados */
+function migrate(s){
+  s.params = s.params || {};
+  const tieneAcza = (s.molduras||[]).some(m=> m.proveedor==="ACZA" || m.rauli!==undefined || m.tepa!==undefined || m.manio!==undefined);
+  if(tieneAcza){
+    s.molduras = defaults().molduras;
+    s._reverted = true;
+  }
+  delete s.params.maderaDefault;
+  delete s.params.aczaLoaded;
+  if(!Array.isArray(s.despachos) || !s.despachos.length) s.despachos = defaults().despachos;
+  if(!Array.isArray(s.cotizaciones)) s.cotizaciones = [];
+  if(!Array.isArray(s.pedidos)) s.pedidos = [];
+  s.sync = Object.assign({owner:"", repo:"", path:"datos-bianco.json", branch:"main"}, s.sync||{});
+  if(s.sync.token!==undefined) delete s.sync.token; // el token nunca vive en el estado
+  s.marca = s.marca || {nombre:"Tienda Bianco", contacto:"", logo:""};
+  if(s.marca.logo===undefined) s.marca.logo="";
+  if(!s.marca.contacto) s.marca.contacto = defaults().marca.contacto;
+  if(s.params.folio===undefined) s.params.folio = 1;
+  return s;
+}
+
+/* ---------------- Init ---------------- */
+async function init(){
+  const saved = await Store.load();
+  if(saved && saved.molduras && saved.params){
+    state = migrate(saved);
+    if(state._reverted){ delete state._reverted; persist(); }
+  }
+  $("brandName").textContent = state.marca.nombre || "Taller Momo";
+  renderTablas();
+  fillSettings();
+  refreshSelects();
+  bind();
+  resetEditor();
+  renderItems();
+  renderOrder();
+  renderCotizaciones();
+  renderPedidos();
+  updateQuoteIndicator();
+}
+init();
+</script>
+</body>
+</html>
